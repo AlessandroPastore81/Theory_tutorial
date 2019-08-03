@@ -1,0 +1,14 @@
+!Exercice 1 input, Infinite well
+&input
+!**************Box Size, def:20fm
+Rbox= 20,
+!**************Maximum angular momentum, def=0    
+lmax = 10,
+!**************Potential properties
+pot ='IW' / 
+
+
+
+
+
+
