@@ -70,7 +70,7 @@ call allocatedensity
 write(*,*)'Setting the potential'
 call setWSpotential(Vdepth,Adiff,Radius,Proton,w_so,w_coul,pot)
 
-write(*,*)'Solving Schroedinger equation'
+write(*,*)'Solving Schrodinger equation'
 allocate(PSaux(Nmaxstate,Npoints)) ! This will be the wave-functions
 	do itz = 0,1               ! This loop will be useful later to do protons and neutrons separately. For now, we do twice the same.
 		!We use the Numerov algorithm
