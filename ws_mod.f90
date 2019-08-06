@@ -25,13 +25,14 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
     
    ! We fill the potential for protons and neutrons
+    print *, 'No potential available, you have to program it'
     do itz=0,1
    ! We define the potential for every point in the box
        do i=1,npoints
           select case(pot)
 	  case("IW")
              !This is where you have to program the Infinite well potential
-	     ! Vpot = ....
+	     ! Vpot = ...
           case("FW")
              !This is where you have to program the Finite well potential 
 	     print *, 'No potential available'

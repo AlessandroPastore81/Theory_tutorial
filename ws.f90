@@ -70,7 +70,7 @@ call allocatedensity
 write(*,*)'Setting the potential'
 call setWSpotential(Vdepth,Adiff,Radius,Proton,w_so,w_coul,pot)
 
-write(*,*)'Solving Schrodinger equation'
+write(*,*)'Solving Schroedinger equation'
 allocate(PSaux(Nmaxstate,Npoints)) ! This will be the wave-functions
 	do itz = 0,1               ! This loop will be useful later to do protons and neutrons separately. For now, we do twice the same.
 		!We use the Numerov algorithm
@@ -109,17 +109,24 @@ if (pot == 'IW') then
 	!Do it
 !	do i=1,10
 		print *, 'Compairison between analytical and obtained eigenvalues to fill'
-!	end do 
-end if
+!	end do
+        !Here, you have to program the analytical wave-functions to compare them with what you obtain.
+	!Don't forget the normalisation factor!!
 open(unit=2000,file='wfs_test.dat')
+!We print the first 6 wave functions.
 do j=1,6
 	do i=1,Npoints
-		write(2000,*) i*mesh, sqrt(2.d0/Rbox)*sin(j*pi/Rbox*i*mesh)
+                ! You have to print here the mesh and the analytical eigenfunctions. The two write (2000,*) after the loop are used to facilitate gnuplot plotting.
+		write(2000,*) 'Here goes the eigenvalues'
 	end do
 	write(2000,*)
 	write(2000,*)
 end do
  close(2000)
+                		print *, 'Compairison between analytical and obtained eigenstates to fill' 
+end if
+
+
 
 
   !=== writing on file
