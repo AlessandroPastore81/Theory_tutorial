@@ -3,7 +3,7 @@
 !**************Box Size, def:20fm
 Rbox= 20,
 !**************Maximum angular momentum, def=0    
-lmax = 10,
+lmax = 0,
 !**************Potential properties
 pot ='IW' / 
 
