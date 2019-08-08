@@ -3,51 +3,87 @@ module ws_auxiliary
 
 contains
 
-  subroutine setWSpotential(Vdepth,Adiff,Radius,Nprot,w_so,w_coul,pot)
+
+  subroutine setWSpotential(Vdepth,Adiff,Radius,Nprot,w_so,w_coul,pot,cstcoul,cstso,w_twodepth,Vdn,Vdp)
 
     implicit none
 
     integer :: i,itz,Nprot
-    real (pr) :: Vdepth,Adiff,Radius
-    real (pr) :: ff,r,const
-    logical (pr) :: w_so, w_coul
+    real (pr) :: Vdepth,Adiff,Radius, Vdp, Vdn
+    real (pr) :: ff,r,cstcoul,cstso
+    logical (pr) :: w_so, w_coul, w_twodepth
     character*2 :: pot
-    !Vpot is what you have to set up for the potential. The dimensions are Vpot(npoints,itz)
-    Vpot(:,:)=3.14d0 !Initializing with a very stupid value
-    !You also have to set up the coefficient in front of the second derivative. We take hb2m= 20.7355300000d0 for every points. The dimensions are the same than Vpot
-    hb2m(:,:)=42.d0   !Initializing with a very intelligent value
 
-    !DO NOT TOUCH, for further exercises!!!!!!!!!!!!!!!!!!!!!!
+
+
     dhmen=0.0_pr
     d2hmen=0.0_pr
     VC=0.0_pr
-    Vso=0.0_pr
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+    Vso=0.0_pr 
     
-   ! We fill the potential for protons and neutrons
-    print *, 'No potential available, you have to program it'
+    open(unit=1000,file='neutron_potential.dat')
+    open(unit=1001,file='proton_potential.dat')
+    
     do itz=0,1
-   ! We define the potential for every point in the box
+       if (itz==0) write(1000,*)'#','r (fm)','Potential','Spin-orbit potential'
+       if (itz==1) write(1001,*)'#','r (fm)','Potential','Spin-orbit potential', 'Coulomb'
        do i=1,npoints
           select case(pot)
-	  case("IW")
-             !This is where you have to program the Infinite well potential
-	     ! Vpot = ...
-          case("FW")
-             !This is where you have to program the Finite well potential 
-	     print *, 'No potential available'
           case("WS")
-             !This is where you have to program the Wood saxon potential
-             print *, 'No potential available'            
+          	r=i*mesh
+          	ff=exp(-(r-Radius)/Adiff)
+          	Vpot(i,itz)=Vdepth*ff/(1.d0+ff)
+                !Having a proton and a neutron depth
+		if (w_twodepth) then
+                if (itz==0) Vpot(i,itz)=Vdn*ff/(1.d0+ff)
+                if (itz==1) Vpot(i,itz)=Vdp*ff/(1.d0+ff) 
+                end if
+          	hb2m(i,itz)= 20.7355300000d0!hbar**2/(2*massnucleon):
+		if (w_so) then
+          		Vso(i,itz)=cstso*Vpot(i,itz)/(r*Adiff*(1.d0+ff))
+		end if
+
+          	if(itz.eq.1)then ! defining the Coulomb potential
+	     		if(w_coul) then
+             			if(r.le.Radius) then
+                			VC(i)=Nprot*echarg/Radius*(3.d0-(r/Radius)**2)*0.5d0
+             			else
+                			VC(i)=Nprot*echarg/r
+            			endif
+            		else
+                		VC(i)=0.0d0
+             		end if
+             	Vpot(i,itz)=Vpot(i,itz)+cstcoul*VC(i)
+          	endif
+	  case("IW")
+	     r=i*mesh		
+             Vpot(i,itz)= 0.0d0
+             hb2m(i,itz)= 20.7355300000d0
+	  case("FW") 
+	     r=i*mesh
+	     if (r.lt.Radius) then		
+             Vpot(i,itz)= Vdepth
+             hb2m(i,itz)= 20.7355300000d0
+             else
+             Vpot(i,itz)= 0.0d0
+             hb2m(i,itz)= 20.7355300000d0
+             end if
+	  !case("OH") 
+          !   r=i*mesh
+          !   Vpot(i,itz)= -r**2*m*w**2 / 2.d0
           case default
-             !Be creative for this one
              print *, 'No potential available'
              stop
           end select
+	
+          if (itz==0) write(1000,*)r,Vpot(i,itz),Vso(i,itz)
+          if (itz==1) write(1001,*)r,Vpot(i,itz),Vso(i,itz),VC(i)
        enddo
+
     enddo
+    close(1000)
+    close(1001)
   end subroutine setWSpotential
-  
 
   !
   !!

@@ -2,18 +2,19 @@
 #Number of states ns
 ns = 5
 set terminal pdf       
-set output 'wfn.pdf'
+set output 'Neutron_wave_function.pdf'
 set xlabel "r[fm]"
 do for [j=0:ns]{
 s=j+1
 set multiplot
 set ylabel "Neutron Wave-function n=".s.''
-plot 'neutron_wfs.dat' i j pt 2 lt rgb "red" title 'Neutron Wave function n='.s.'','wfs_test.dat' i j pt 1 lt rgb "purple" title 'Test function n='.s.'', '' u 1:(0) w l
+#Uncomment 'wfs_test' part if IW 
+plot 'neutron_wfs.dat' i j pt 2 lt rgb "red" title 'Neutron Wave function n='.s.'',#'wfs_test.dat' i j pt 1 lt rgb "purple" title 'Test function n='.s.'', '' u 1:(0) w l
 unset multiplot}
 reset
 
 set terminal pdf       
-set output 'wfp.pdf'
+set output 'Proton_wave_function.pdf'
 set xlabel "r[fm]"
 do for [j=0:ns]{
 s=j+1
@@ -98,7 +99,7 @@ unset multiplot
 reset
 
 set terminal pdf       
-set output 'spe.pdf'
+set output 'eigenn.pdf'
 set multiplot
 set key off
 unset xtics
@@ -107,3 +108,12 @@ plot 'neutron_singleparticles.dat' using (-1):($1):(2):(0) with vectors nohead l
 unset multiplot
 reset
 
+set terminal pdf       
+set output 'eigenp.pdf'
+set multiplot
+set key off
+unset xtics
+set ylabel "Energies [MeV]"
+plot 'proton_singleparticles.dat' using (-1):($1):(2):(0) with vectors nohead lw 4 lt rgb "red"
+unset multiplot
+reset

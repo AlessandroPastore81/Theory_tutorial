@@ -1,13 +1,20 @@
-!Exercice 1 input, Infinite well
+!Exercice 3 input, Wood-Saxon
 &input
+!**************Nucleus
+Neutron=126, Proton=82,
 !**************Box Size, def:20fm
-Rbox= 20,
-!**************Maximum angular momentum, def=0    
-lmax = 0,
+Rbox= 20.0,
 !**************Potential properties
-pot ='IW' / 
-
-
+!Uncomment the one you want to use 
+!!Exercise1, Infinite well
+!Changing Rbox, think of changing it in the plot script
+pot ='IW', lmax=6, Rbox = 20.0 /
+!!Exercise2, Finite well
+!pot ='FW', lmax=0, Radius=3.54,Vdepth=-27.0 /
+!!Exercise3, Wood-Saxon.
+!pot ='WS', lmax=0, Vdepth=-44.019, Radius = 7.5247, Adiff = 0.67, ,w_coul=.false.,cstcoul=1.0,w_so=.false.,cstso=1.0 / 
+!!Exercise4, Two depth Wood-Saxon.
+!pot ='WS', lmax=0, Vdepth=-44.019, Radius = 7.5247, Adiff = 0.67, ,w_coul=.false.,cstcoul=1.0,w_so=.false.,cstso=1.0, w_twodepth=.true.,Vdn=-44.019,Vdp=-34.019 / 
 
 
 

@@ -14,23 +14,25 @@ program mainprogram
   !
   integer, parameter :: itermax=1
   real (pr), parameter :: Emax=100.0_pr
+  integer, parameter :: ialeroutine=0
   !
-  real (pr) :: Rbox,diff, conv
-  real (pr) :: Vdepth,Adiff,Radius,Naux
+  real (pr) :: Rbox,diff, conv, cstso,cstcoul
+  real (pr) :: Vdepth,Adiff,Radius,Naux, Vdn, Vdp
   real (pr) :: total_energy,xmu,total_energy_pre
   character*4 :: forceread
   character*2 :: pot
-  logical (pr) :: w_so, w_coul
+  logical (pr) :: w_so, w_coul, w_twodepth
   double precision, allocatable ::  PSaux(:,:)
-  namelist /input/ Neutron, Proton, Rbox, forceread, lmax, Vdepth,Adiff,Radius, w_so,pot
+  namelist /input/ Neutron, Proton, Rbox, forceread, lmax, Vdepth,Adiff,Radius, w_so,w_coul,pot,cstso,cstcoul, &
+                    & w_twodepth, Vdp,Vdn
 
 
   ! ====== Initial parameters 
-  ! Do not touch here, only in input!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   diff = 0.0_pr
   Rbox=20.0_pr
 
-  Npoints=Nint(Rbox/mesh)
+  
 
   Vdepth=-51.d0 !-44.0192307692_pr   !51 - 33 (N-Z)/(N+Z) Pb208
   Adiff=0.67_pr
@@ -44,93 +46,162 @@ program mainprogram
   conv = 1.e-8
   w_so = .true.
   w_coul = .true.
+  w_twodepth = .false.
+  Vdn = Vdepth
+  Vdp = Vdepth
+  cstcoul = 1.0
+  cstso = 1.0
 !  pot = "WS"
   pot = "IW"
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   
   open( unit=10, file ="input",status = "old" )
   read(10,nml=input)
   close(10)
-
+  
    force=forceread
-
+  Npoints=Nint(Rbox/mesh)
 
 
   ! zeroing vectors and allocation
-call zero
-call alloc
+  call zero
+  call alloc
 
-call allocatedensity
+  call allocatedensity
 
   ! setting the  Skyrme interaction
-  ! not used here
-!call set_force
+  call set_force
 
-write(*,*)'Setting the potential'
-call setWSpotential(Vdepth,Adiff,Radius,Proton,w_so,w_coul,pot)
+  write(*,*)'Fixing the WS potential'
+  call setWSpotential(Vdepth,Adiff,Radius,Proton,w_so,w_coul,pot,cstcoul,cstso,&
+                  &   w_twodepth,Vdn,Vdp)
 
-write(*,*)'Solving Schroedinger equation'
-allocate(PSaux(Nmaxstate,Npoints)) ! This will be the wave-functions
-	do itz = 0,1               ! This loop will be useful later to do protons and neutrons separately. For now, we do twice the same.
-		!We use the Numerov algorithm
-		call  boundary(mesh,Lmax,Emax, &
-			Npoints,PSaux,Ncount(itz),Jused(:,itz), &
-			Lused(:,itz),EE(:,itz),itz)
-		
-        	do n=1,Ncount(itz) !Ncount is the total number of states we keep after Numerov
-			!We store the wave-functions for neutrons and protons           		
-			do ix=1,Npoints 
-				PSi(ix,n,itz)=PSaux(n,ix)
-           		enddo
-        	enddo
+  write(*,*)'Solving Schroedinger equation'
+
+  !write(*,*)
+  !write(*,*)'-----------------------------------------------------'
+  !write(*,*)'         IT       Etot                 Difference'
+  !write(*,*)
+  do iter=1,itermax
+     ! I solve Schoreding equation to get w.functions
+
+     if(ialeroutine.eq.0)then
+        ! here I use the original Numerov form Milano
+        allocate(PSaux(Nmaxstate,Npoints))
+        itz=0
+        call  boundary(mesh,Lmax,Emax, &
+             Npoints,PSaux,Ncount(itz),Jused(:,itz),Lused(:,itz),EE(:,itz),itz)
+
+        do n=1,Ncount(itz)
+           do ix=1,Npoints
+              PSi(ix,n,itz)=PSaux(n,ix)
+           enddo
+        enddo
+
+        itz=1
+        call  boundary(mesh,Lmax,Emax, &
+             Npoints,PSaux,Ncount(itz),Jused(:,itz),Lused(:,itz),EE(:,itz),itz)
+        do n=1,Ncount(itz)
+           do ix=1,Npoints
+              PSi(ix,n,itz)=PSaux(n,ix)
+           enddo
         enddo
 
         deallocate(PSaux)
+     else
+        ! my routine
+        call HFbasis(lmax,Ncount,Emax)
+     endif
 
-! We do the derivative of the basis
-call derivative(Ncount,mesh)
+     ! derivative of the basis
+     call derivative(Ncount,mesh)
 
-!We sort the energies from the smaller to the larger 
-call ordina(Ncount)
+     ! .. I sort them...
+     call ordina(Ncount)
 
-!We fill the shells, for this exercise, we don't use it
-call occupation(Proton,Neutron,Ncount,pot)
+     ! .. I fill the degenracy
 
-! We build the density of particles by considering the square of the wave-functions
-call builddensity(ncount,mesh)
+     call occupation(Proton,Neutron,Ncount,pot)
 
-! This plots the density in the files DensityN.dat / DensityP.dat
-call  plotdensity(mesh)
-if (pot == 'IW') then
-	print *, 'Checking analytical formula for the eigenvalues'
-	print *, '          n    ', 'Analitycal E_n' , '            Obtained  E_n'
-	!Here, you can program the analytical energies for an infinite well to check you have the same results.
-	!Do it
-!	do i=1,10
-		print *, 'Compairison between analytical and obtained eigenvalues to fill'
-!	end do
-        !Here, you have to program the analytical wave-functions to compare them with what you obtain.
-	!Don't forget the normalisation factor!!
-open(unit=2000,file='wfs_test.dat')
-!We print the first 6 wave functions.
-do j=1,6
-	do i=1,Npoints
-                ! You have to print here the mesh and the analytical eigenfunctions. The two write (2000,*) after the loop are used to facilitate gnuplot plotting.
-		write(2000,*) 'Here goes the eigenvalues'
-	end do
-	write(2000,*)
-	write(2000,*)
-end do
- close(2000)
-                		print *, 'Compairison between analytical and obtained eigenstates to fill' 
-end if
+     ! -- i build the density 
 
+     call builddensity(ncount,mesh)
 
+     ! and I plot it
+     call  plotdensity(mesh)
+     do it=0,1
+     Naux=0.0_pr
+     do n=1,ncount(it)
+        Naux=Naux+(jused(n,it)+1)*deg(n,it)
+	!Rough estimate of the total energy by considering the sum or single-particles multiplied by degeneracy
+	total_energy = total_energy+ ee(n,it)*(jused(n,it)+1)*deg(n,it)
+     end do
+     end do
+!    if (pot == 'WS') print *, 'Estimate of the nucleus total energy:', total_energy
+     if (pot == 'IW') then
+     print *, 'Checking analytical formula for the eigenvalues'
+     print *, '          n    ', 'Analitycal E_n' , '            Obtained  E_n'
+     do i=1,10
+     	print *,i, 20.7355300000d0*pi**2*i**2/Rbox**2, ee(i,0)
+     end do 
+     end if
+     if (pot == 'FW') then
+     print *, 'The occupied neutron state energies are:'
+     print *,'Energy of single-particle (MeV)','     L ', '          2*J   ', 'Occupation'
+     do it=0,0
+     Naux=0.0_pr
+     do n=1,ncount(0)
+        Naux=Naux+(jused(n,it)+1)*deg(n,it)
+        !if the state is occupied, print the energy
+        if(deg(n,it).ne.0) then
+        print *, ee(n,it),Lused(n,it),jused(n,it),Naux
+        end if
+!        do ix=1,Npoints
+!           if(deg(n,it).ne.0)  write(999,*)ix,PSi(ix,n,it)
+!        enddo
+     enddo
+     enddo
+     end if
+     if (pot == 'WS') then
+     do it=0,1
+     if (it==0) print *, 'The occupied neutron state energies are:'
+     if (it==1) print *, 'The occupied proton state energies are:'
+     print *,'Energy of single-particle (MeV)','     L ', '          2*J   ', 'Occupation'
+     Naux=0.0_pr
+     do n=1,ncount(it)
+        Naux=Naux+(jused(n,it)+1)*deg(n,it)
+        !if the state is occupied, print the energy
+        if(deg(n,it).ne.0) then
+        print *, ee(n,it),Lused(n,it),jused(n,it),Naux
+        end if
+!        do ix=1,Npoints
+!           if(deg(n,it).ne.0)  write(999,*)ix,PSi(ix,n,it)
+!        enddo
+     enddo
+     enddo
+     end if
+     open(unit=2000,file='wfs_test.dat')
+     do j=1,6
+     do i=1,Npoints
+     	write(2000,*) i*mesh, sqrt(2.d0/Rbox)*sin(j*pi/Rbox*i*mesh)
+     end do
+        write(2000,*)
+        write(2000,*)
+      end do
+     close(2000)
+
+     ! create fields
+     !call HFBpotentials(Npoints,mesh,xmu,Proton,Neutron,total_energy)
+     !diff=abs(total_energy-total_energy_pre)
+
+     !total_energy_pre=total_energy
+     !write(*,*)iter,total_energy,diff
+     !if(diff.lt.conv)exit
+  enddo
 
 
   !=== writing on file
-  !Here, we plot all the interesting quantities
+
   open(unit=1000,file='neutron_singleparticles.dat')
   open(unit=1001,file='proton_singleparticles.dat')
   open(unit=2000,file='neutron_wfs.dat')

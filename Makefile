@@ -14,7 +14,7 @@ GZIP = gzip --best
 CAT = cat
 #
 BUILDER = gfortran
-FFLAGS =
+FFLAGS = -Wall -O3
 OPT = 
 LFLAGS = 
 
